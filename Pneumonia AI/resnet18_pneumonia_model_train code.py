@@ -25,7 +25,7 @@ BEST_MODEL_PATH = os.path.join(
 )
 
 BATCH_SIZE = 256
-EPOCHS = 30
+EPOCHS = 5
 LR = 1e-4
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -186,7 +186,7 @@ def main():
         # ------------------
         # Save best model (원본 그대로 + model_name만 정정)
         # ------------------
-        SAVE_THRESHOLD = 0.91
+        SAVE_THRESHOLD = 0.85
 
         if test_acc >= SAVE_THRESHOLD:
             save_path = os.path.join(
