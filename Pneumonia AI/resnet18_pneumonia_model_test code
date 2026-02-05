@@ -19,7 +19,7 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 # =====================================================
 # Load trained model
 # =====================================================
-MODEL_PATH = r"C:\Users\user\OneDrive\바탕 화면\코딩 연습\Pneumonia AI\Model\resnet18_pneumonia_best0.947.pth"
+MODEL_PATH = r"C:\Users\user\OneDrive\바탕 화면\코딩 데이터\Pneumonia models\resnet18_pneumonia_best.pth"
 
 checkpoint = torch.load(MODEL_PATH, map_location=DEVICE)
 
