@@ -86,6 +86,8 @@ def main():
                 logits_list.append(out.detach().cpu().numpy())
 
             logits = np.concatenate(logits_list, axis=0)
+            LOGIT_CLIP = 5.0 
+            logits = np.clip(logits, -LOGIT_CLIP, LOGIT_CLIP)
             sum_logits += logits
 
             # 개별 모델 성능도 같이 출력
