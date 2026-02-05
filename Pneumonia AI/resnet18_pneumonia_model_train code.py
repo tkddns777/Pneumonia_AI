@@ -10,6 +10,18 @@ import seaborn as sns
 import cv2
 from PIL import Image
 from sklearn.metrics import accuracy_score, confusion_matrix
+import random
+
+def set_seed(seed: int):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
+    # 완전 재현성 (조금 느려질 수 있음)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 # =====================================================
 # Config (원본 그대로)
@@ -30,7 +42,9 @@ LR = 1e-4
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-def main():
+def main(seed):
+    print(f"\n===== Training with seed = {seed} =====")
+    set_seed(seed)
     # =====================================================
     # CUDA print (원본 그대로)
     # =====================================================
@@ -186,12 +200,12 @@ def main():
         # ------------------
         # Save best model (원본 그대로 + model_name만 정정)
         # ------------------
-        SAVE_THRESHOLD = 0.85
+        SAVE_THRESHOLD = 0.95
 
         if test_acc >= SAVE_THRESHOLD:
             save_path = os.path.join(
                 MODEL_SAVE_DIR,
-                f"resnet18_epoch{epoch+1:03d}_acc{test_acc:.3f}.pth"
+                f"resnet18_seed{seed}_epoch{epoch+1:03d}_acc{test_acc:.3f}.pth"
             )
 
             torch.save({
@@ -216,4 +230,8 @@ def main():
 if __name__ == "__main__":
     import multiprocessing as mp
     mp.freeze_support()
-    main()
+
+    SEEDS = [0, 10, 100, 200]   # 추천: 3개면 충분
+
+    for seed in SEEDS:
+        main(seed)
