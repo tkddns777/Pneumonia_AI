@@ -37,7 +37,7 @@ BEST_MODEL_PATH = os.path.join(
 )
 
 BATCH_SIZE = 256
-EPOCHS = 5
+EPOCHS = 3
 LR = 1e-4
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -200,7 +200,7 @@ def main(seed):
         # ------------------
         # Save best model (원본 그대로 + model_name만 정정)
         # ------------------
-        SAVE_THRESHOLD = 0.95
+        SAVE_THRESHOLD = 0.85
 
         if test_acc >= SAVE_THRESHOLD:
             save_path = os.path.join(
@@ -231,7 +231,7 @@ if __name__ == "__main__":
     import multiprocessing as mp
     mp.freeze_support()
 
-    SEEDS = [0, 10, 100, 200]   # 추천: 3개면 충분
+    SEEDS = [1000, 9500, 10000, 200]   # 추천: 3개면 충분
 
     for seed in SEEDS:
         main(seed)

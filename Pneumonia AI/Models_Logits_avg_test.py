@@ -8,7 +8,7 @@ from torchvision import datasets, transforms, models
 from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score, confusion_matrix
 
-LOGIT_CLIP = 5.0
+LOGIT_CLIP = 0.1
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 MODEL_SAVE_DIR = r"C:\Users\user\OneDrive\바탕 화면\코딩 데이터\Pneumonia models"
