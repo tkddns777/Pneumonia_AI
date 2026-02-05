@@ -1,0 +1,8 @@
+# ===== Model weights (do not commit) =====
+*.pth
+*.pt
+*.ckpt
+*.onnx
+
+# (선택) 모델 폴더 통째로 제외
+Pneumonia AI/Model/

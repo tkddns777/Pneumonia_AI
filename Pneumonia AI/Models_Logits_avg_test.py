@@ -8,10 +8,10 @@ from torchvision import datasets, transforms, models
 from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score, confusion_matrix
 
-LOGIT_CLIP = 3.0
+LOGIT_CLIP = 5.0
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-#MODEL_SAVE_DIR = r"C:\Users\user\OneDrive\바탕 화면\코딩 데이터\Pneumonia models"
+MODEL_SAVE_DIR = r"C:\Users\user\OneDrive\바탕 화면\코딩 데이터\Pneumonia models"
 TEST_DIR = r"C:\Users\user\OneDrive\바탕 화면\코딩 데이터\Pneumonia CT images\test"
 
 def build_model(num_classes: int):
@@ -20,6 +20,11 @@ def build_model(num_classes: int):
     return m
 
 def main():
+    print("CUDA available:", torch.cuda.is_available())
+    print("CUDA device count:", torch.cuda.device_count())
+    print("Current device:", torch.cuda.current_device() if torch.cuda.is_available() else "CPU")
+    print("Device name:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU")
+
     # 1) 모델 파일들 가져오기
     model_paths = sorted(glob.glob(os.path.join(MODEL_SAVE_DIR, "resnet18_epoch*_acc*.pth")))
     if len(model_paths) == 0:
