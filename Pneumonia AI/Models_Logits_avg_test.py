@@ -8,10 +8,10 @@ from torchvision import datasets, transforms, models
 from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score, confusion_matrix
 
-LOGIT_CLIP = 1.0
+LOGIT_CLIP = 3.0
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-MODEL_SAVE_DIR = r"C:\Users\user\OneDrive\바탕 화면\코딩 데이터\Pneumonia models"
+#MODEL_SAVE_DIR = r"C:\Users\user\OneDrive\바탕 화면\코딩 데이터\Pneumonia models"
 TEST_DIR = r"C:\Users\user\OneDrive\바탕 화면\코딩 데이터\Pneumonia CT images\test"
 
 def build_model(num_classes: int):
