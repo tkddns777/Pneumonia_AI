@@ -45,6 +45,50 @@ EPOCHS = 5
 LR = 2.5e-4
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
+import torch.nn.functional as F
+
+# =====================================================
+# Logit 통계 수집 및 추정 함수
+@torch.no_grad()
+def collect_logits_and_labels(model, loader, device):
+    model.eval()
+    all_logits = []
+    all_labels = []
+    for images, labels in loader:
+        images = images.to(device)
+        logits = model(images)              # (B, C) raw logits
+        all_logits.append(logits.detach().cpu())
+        all_labels.append(labels.detach().cpu())
+    all_logits = torch.cat(all_logits, dim=0)   # (N, C)
+    all_labels = torch.cat(all_labels, dim=0)   # (N,)
+    return all_logits, all_labels
+
+# =====================================================
+# 클래스별 Logit 통계 추정 함수
+def estimate_classwise_logit_stats(logits, labels, num_classes):
+    """
+    logits: (N, C) CPU tensor
+    labels: (N,) CPU tensor (ground-truth)
+    return:
+      mu:    (C,) 각 클래스의 '정답 클래스 logit' 평균
+      sigma: (C,) 각 클래스의 '정답 클래스 logit' 표준편차
+    """
+    mu = torch.zeros(num_classes, dtype=torch.float32)
+    sigma = torch.zeros(num_classes, dtype=torch.float32)
+
+    for c in range(num_classes):
+        idx = (labels == c)
+        if idx.sum() < 2:
+            # 표본이 너무 적으면 분산 추정 불가 -> sigma 아주 작게 처리
+            values = logits[idx, c]
+            mu[c] = values.mean() if idx.sum() > 0 else 0.0
+            sigma[c] = 1e-6
+        else:
+            values = logits[idx, c]   # "정답 클래스 c" 샘플의 "클래스 c logit"
+            mu[c] = values.mean()
+            sigma[c] = values.std(unbiased=True) + 1e-6  # 0 방지
+    return mu, sigma
+
 
 def main(seed):
     print(f"\n===== Training with seed = {seed} =====")
@@ -105,8 +149,7 @@ def main(seed):
     print("Train class counts:", class_counts)
 
     # 클래스가 적을수록 더 많이 뽑히도록 가중치 부여
-    manual_boost = [1.5, 1.0] # 0번 클래스는 그대로, 1번 클래스는 1.5배 더 많이
-    class_weights = (1.0 / class_counts) * manual_boost
+    class_weights = 1.0 / class_counts
     sample_weights = [class_weights[t] for t in targets]
 
     sampler = WeightedRandomSampler(
@@ -192,46 +235,70 @@ def main(seed):
         # ------------------
         # Test
         # ------------------
+        # ------------------
+        # Test (logits 기반 gate 포함)
+        # ------------------
         model.eval()
-        test_preds, test_labels = [], []
 
-        with torch.no_grad():
-            for images, labels in tqdm(test_loader, desc=f"Epoch {epoch+1} [Test]"):
-                images, labels = images.to(DEVICE), labels.to(DEVICE)
-                outputs = model(images)
+        # 1) test logits/labels 수집
+        test_logits, test_labels_t = collect_logits_and_labels(model, test_loader, DEVICE)
 
-                test_preds.extend(outputs.argmax(1).cpu().numpy())
-                test_labels.extend(labels.cpu().numpy())
-
-        test_acc = accuracy_score(test_labels, test_preds)
+        # 2) 일반 예측(기존 방식)
+        test_preds_t = test_logits.argmax(dim=1)
+        test_acc = (test_preds_t == test_labels_t).float().mean().item()
         print(f"[Test] Accuracy: {test_acc:.3f}")
 
-        # ------------------
-        # Test Confusion Matrix (원본 그대로)
-        # ------------------
-        cm_test = confusion_matrix(test_labels, test_preds)
-        plt.figure(figsize=(4, 4))
-        sns.heatmap(
-            cm_test, annot=True, fmt="d", cmap="Greens",
-            xticklabels=class_names, yticklabels=class_names
-        )
-        plt.title("Test Confusion Matrix")
-        plt.xlabel("Predicted")
-        plt.ylabel("True")
-        plt.tight_layout()
-        plt.show(block=False)
-        plt.pause(0.5)
+        # 3) 클래스별 logit 분포(μ, σ) 추정 (정답 클래스 logit 기준)
+        num_classes = len(class_names)
+        mu, sigma = estimate_classwise_logit_stats(test_logits, test_labels_t, num_classes)
+
+        # 4) gate 정의: "예측 클래스의 logit"이 (μ_pred + k·σ_pred) 이상이면 confident
+        k = 1.0  # 보통 0.5~2.0 사이에서 튜닝 (1.0부터 추천)
+        pred_cls = test_preds_t
+        pred_logit = test_logits[torch.arange(test_logits.size(0)), pred_cls]
+        thresholds = mu[pred_cls] + k * sigma[pred_cls]
+        confident_mask = pred_logit >= thresholds
+
+        coverage = confident_mask.float().mean().item()  # confident로 남는 비율
+        if confident_mask.sum() > 0:
+            confident_acc = (test_preds_t[confident_mask] == test_labels_t[confident_mask]).float().mean().item()
+        else:
+            confident_acc = 0.0
+
+        print(f"[Gate] k={k:.2f} | Coverage: {coverage:.3f} | Confident Acc: {confident_acc:.3f}")
+
+        # (선택) gate 통과한 샘플만 confusion matrix
+        # 단, coverage가 너무 낮으면 의미가 없을 수 있음
+        if confident_mask.sum() > 0:
+            cm_test_conf = confusion_matrix(
+                test_labels_t[confident_mask].numpy(),
+                test_preds_t[confident_mask].numpy()
+            )
+            plt.figure(figsize=(4, 4))
+            sns.heatmap(
+                cm_test_conf, annot=True, fmt="d", cmap="Oranges",
+                xticklabels=class_names, yticklabels=class_names
+            )
+            plt.title(f"Confident Test CM (k={k:.1f}, cov={coverage:.2f})")
+            plt.xlabel("Predicted")
+            plt.ylabel("True")
+            plt.tight_layout()
+            plt.show(block=False)
+            plt.pause(0.5)
+            plt.close()
         
 
         # ------------------
         # Save best model (원본 그대로 + model_name만 정정)
         # ------------------
         SAVE_THRESHOLD = 0.95
+        MIN_COVERAGE = 0.40
+        MIN_CONF_ACC = 0.97
 
-        if test_acc >= SAVE_THRESHOLD:
+        if (test_acc >= SAVE_THRESHOLD) and (coverage >= MIN_COVERAGE) and (confident_acc >= MIN_CONF_ACC):
             save_path = os.path.join(
                 MODEL_SAVE_DIR,
-                f"resnet18_seed{seed}_epoch{epoch+1:03d}_acc{test_acc:.3f}.pth"
+                f"resnet18_seed{seed}_epoch{epoch+1:03d}_acc{test_acc:.3f}_cov{coverage:.2f}_cacc{confident_acc:.3f}.pth"
             )
 
             torch.save({
@@ -239,11 +306,17 @@ def main(seed):
                 "model_state_dict": model.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
                 "test_accuracy": test_acc,
+                "gate_k": k,
+                "gate_coverage": coverage,
+                "gate_confident_accuracy": confident_acc,
                 "class_names": class_names,
                 "model_name": "resnet18",
+                "logit_mu": mu.numpy(),       # 나중에 재현 가능
+                "logit_sigma": sigma.numpy(), # 나중에 재현 가능
             }, save_path)
 
-            print(f"✅ Best model saved (epoch={epoch+1}, acc={test_acc:.3f})")
+            print(f"✅ Saved (acc={test_acc:.3f}, cov={coverage:.2f}, cacc={confident_acc:.3f})")
+
 
     # =====================================================
     # Save Model (원본 그대로)
