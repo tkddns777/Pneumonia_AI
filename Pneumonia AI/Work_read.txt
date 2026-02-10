@@ -5,8 +5,9 @@
 4. Resnet18 Size 224->299
    *https://www.kaggle.com/code/ravaghi/pneumonia-in-chest-x-rays-inceptionv3-grad-cam
    In the link more specific area is detected
+5. Inception_v3 : 96.5% / Grad-CAM best
 
 Next
 1. Increase 299-> 448 Grad-CAM increase?
-2. comparing inception_v3, DenseNet121, EfficientNet-B9, Resnet50
+2. comparing, DenseNet121, EfficientNet-B9, Resnet50
 
