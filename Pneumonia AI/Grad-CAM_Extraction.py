@@ -19,7 +19,7 @@ OUT_DIR    = r"C:\Users\user\OneDrive\바탕 화면\코딩 연습\Pneumonia AI\G
 
 IMG_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp")
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-
+Image_SIZE = 224  # 모델 학습 시 사용한 이미지 크기와 동일하게 설정 필요
 
 # =====================================================
 # Unicode-safe 저장 (한글/OneDrive/공백 경로에서도 OK)
@@ -226,7 +226,7 @@ def main():
     # 2) 전처리 (학습과 동일해야 가장 정확)
     # -----------------------
     preprocess = transforms.Compose([
-        transforms.Resize((224, 224)),
+        transforms.Resize((Image_SIZE, Image_SIZE)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                              std=[0.229, 0.224, 0.225]),
