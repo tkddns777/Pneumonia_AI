@@ -11,6 +11,10 @@ import cv2
 from PIL import Image
 from sklearn.metrics import accuracy_score, confusion_matrix
 import random
+from torch.utils.data import WeightedRandomSampler
+from torchvision.models import resnet18, ResNet18_Weights
+model = resnet18(weights=ResNet18_Weights.DEFAULT)
+
 
 def set_seed(seed: int):
     random.seed(seed)
@@ -36,7 +40,7 @@ BEST_MODEL_PATH = os.path.join(
     "resnet18_pneumonia_best.pth"
 )
 
-BATCH_SIZE = 256
+BATCH_SIZE = 128
 EPOCHS = 3
 LR = 1e-4
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -95,15 +99,36 @@ def main(seed):
     # ✅ 여기서 num_workers가 0이 아니면 Windows에서 __main__ 가드 없을 때 터짐
     # 지금은 __main__ 가드가 있으니 num_workers 사용 가능
     # 다만, VSCode/환경 따라 문제 생기면 num_workers=0으로 낮추면 됨
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True,
-                              num_workers=0, pin_memory=torch.cuda.is_available())
+    # 불균형 데이터셋 처리를 위한 WeightedRandomSampler 추가
+    targets = [y for _, y in train_dataset.samples]      # ImageFolder의 라벨 리스트
+    class_counts = np.bincount(targets)                 # 클래스별 개수
+    print("Train class counts:", class_counts)
+
+    # 클래스가 적을수록 더 많이 뽑히도록 가중치 부여
+    class_weights = 1.0 / class_counts
+    sample_weights = [class_weights[t] for t in targets]
+
+    sampler = WeightedRandomSampler(
+        weights=sample_weights,
+        num_samples=len(sample_weights),   # 한 epoch당 샘플 수 (보통 전체 길이)
+        replacement=True                   # 소수 클래스는 중복 허용
+    )
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=BATCH_SIZE,
+        sampler=sampler,                   # ✅ shuffle 대신 sampler 사용
+        num_workers=2,
+        pin_memory=torch.cuda.is_available()
+    )
+
     test_loader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False,
-                              num_workers=0, pin_memory=torch.cuda.is_available())
+                              num_workers=2, pin_memory=torch.cuda.is_available())
 
     # =====================================================
     # Model (원본 그대로)
     # =====================================================
-    model = models.resnet18(pretrained=True)
+    model = resnet18(weights=ResNet18_Weights.DEFAULT)
 
     model.fc = nn.Sequential(
         # nn.Dropout(p=0.5),  # 필요시 여기에 활성화
@@ -130,18 +155,22 @@ def main(seed):
         train_preds, train_labels = [], []
         running_loss = 0
 
+        use_amp = (DEVICE == "cuda")
+        scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+
         for images, labels in tqdm(train_loader, desc=f"Epoch {epoch+1} [Train]"):
-            images, labels = images.to(DEVICE), labels.to(DEVICE)
+            images, labels = images.to(DEVICE, non_blocking=True), labels.to(DEVICE, non_blocking=True)
 
-            optimizer.zero_grad()
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
+            optimizer.zero_grad(set_to_none=True)
 
-            running_loss += loss.item()
-            train_preds.extend(outputs.argmax(1).cpu().numpy())
-            train_labels.extend(labels.cpu().numpy())
+            with torch.cuda.amp.autocast(enabled=use_amp):
+                outputs = model(images)
+                loss = criterion(outputs, labels)
+
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+
 
         train_acc = accuracy_score(train_labels, train_preds)
         print(f"[Train] Loss: {running_loss/len(train_loader):.4f} | Acc: {train_acc:.3f}")
@@ -231,7 +260,7 @@ if __name__ == "__main__":
     import multiprocessing as mp
     mp.freeze_support()
 
-    SEEDS = [1000, 9500, 10000, 200]   # 추천: 3개면 충분
+    SEEDS = [0, 100, 500]   # 추천: 3개면 충분
 
     for seed in SEEDS:
         main(seed)
