@@ -39,8 +39,8 @@ BEST_MODEL_PATH = os.path.join(
     MODEL_SAVE_DIR,
     "resnet18_pneumonia_best.pth"
 )
-
-BATCH_SIZE = 256
+Image_SIZE = 299
+BATCH_SIZE = 64
 EPOCHS = 5
 LR = 2.5e-4
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -64,7 +64,7 @@ def main(seed):
     # train transform with data augmentation (원본 그대로)
     # =====================================================
     train_transform = transforms.Compose([
-        transforms.RandomResizedCrop(224, scale=(0.7, 1.0)),  # 위치/크기 다양화
+        transforms.RandomResizedCrop(Image_SIZE, scale=(0.7, 1.0)),  # 위치/크기 다양화
         transforms.RandomRotation(15),                        # 촬영 각도 편차
         # transforms.RandomHorizontalFlip(p=0.5),              # 좌우 대칭 허용 (흉부는 OK)
         transforms.ColorJitter(brightness=0.1, contrast=0.1), # 촬영 조건 차이
@@ -79,7 +79,7 @@ def main(seed):
     # Transform (test) (원본 그대로)
     # =====================================================
     transform = transforms.Compose([
-        transforms.Resize((224, 224)),
+        transforms.Resize((Image_SIZE, Image_SIZE)),
         transforms.ToTensor(),
         transforms.Normalize(
             mean=[0.485, 0.456, 0.406],
@@ -257,7 +257,7 @@ if __name__ == "__main__":
     import multiprocessing as mp
     mp.freeze_support()
 
-    SEEDS = [0, 100, 500]   # 추천: 3개면 충분
+    SEEDS = [0]   # 추천: 3개면 충분
 
     for seed in SEEDS:
         main(seed)

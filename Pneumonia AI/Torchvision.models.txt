@@ -1,0 +1,40 @@
+Torchvision.models
+resnet18
+resnet34
+resnet50
+resnet101
+resnet152
+안정적, 디버깅 쉬움
+의료영상 baseline으로 가장 많이 쓰임
+
+densenet121
+densenet161
+densenet169
+densenet201
+의료영상, CT, X-ray에서 매우 강함
+feature reuse → 미세 텍스처 보존
+메모리 사용량 큼 (주의)
+
+efficientnet_b0
+efficientnet_b1
+efficientnet_b2
+efficientnet_b3
+efficientnet_b4
+efficientnet_b5
+efficientnet_b6
+efficientnet_b7
+정확도 대비 파라미터 효율 최고
+의료 AI 논문에서 ResNet 대체재로 가장 많이 등장
+
+mobilenet_v2
+mobilenet_v3_small
+mobilenet_v3_large
+shufflenet_v2_x1_0
+임베디드/실시간용
+의료 CT에는 보통 성능 부족
+
+inception_v3
+googlenet
+⚠️ 입력 크기/aux loss 등 귀찮음
+⚠️ CT 프로젝트엔 비추천
+

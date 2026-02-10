@@ -40,7 +40,7 @@ BEST_MODEL_PATH = os.path.join(
     "densenet121_pneumonia_best.pth"
 )
 
-BATCH_SIZE = 256
+BATCH_SIZE = 64
 EPOCHS = 5
 LR = 2.5e-4
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"

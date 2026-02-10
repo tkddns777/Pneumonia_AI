@@ -13,7 +13,7 @@ import random
 # =====================================================
 # 설정: 너 환경에 맞게 여기만 수정
 # =====================================================
-MODEL_PATH = r"C:\Users\user\OneDrive\바탕 화면\코딩 데이터\Pneumonia models\resnet18_seed0_epoch003_acc0.955.pth"
+MODEL_PATH = r"C:\Users\user\OneDrive\바탕 화면\코딩 데이터\Pneumonia models\resnet18_seed0_epoch002_acc0.960.pth"
 TEST_DIR   = r"C:\Users\user\OneDrive\바탕 화면\코딩 데이터\Pneumonia CT images\test"   # test/NORMAL, test/PNEUMONIA
 OUT_DIR    = r"C:\Users\user\OneDrive\바탕 화면\코딩 연습\Pneumonia AI\Grad-CAM\gradcam_test2"
 
