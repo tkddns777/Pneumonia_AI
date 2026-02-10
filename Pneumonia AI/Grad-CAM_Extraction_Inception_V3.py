@@ -16,7 +16,7 @@ import random
 # =====================================================
 MODEL_PATH = r"C:\Users\user\OneDrive\바탕 화면\코딩 데이터\Pneumonia models\Inception_V3_seed0_epoch004_acc0.965.pth"
 TEST_DIR   = r"C:\Users\user\OneDrive\바탕 화면\코딩 데이터\Pneumonia CT images\test"   # test/NORMAL, test/PNEUMONIA
-OUT_DIR    = r"C:\Users\user\OneDrive\바탕 화면\코딩 연습\Pneumonia AI\Grad-CAM\gradcam_test2"
+OUT_DIR    = r"C:\Users\user\OneDrive\바탕 화면\코딩 연습\Pneumonia AI\Grad-CAM\GradCAM_results"
 
 IMG_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp")
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
